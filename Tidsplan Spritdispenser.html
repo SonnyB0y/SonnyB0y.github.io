@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tidsplan Spritdispenser</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: oversigt øverst, scrollbart Gantt i midten, detaljepanel nederst */
+:root {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --ink: #1b2330;
+  --ink-2: #566071;
+  --line: #dfe3ea;
+  --accent: #1f5fd1;
+  --today: #d23b3b;
+  --c-admin: #6b7280;
+  --c-plan: #2f6fdb;
+  --c-net: #1f8a5b;
+  --c-hw: #cf6a12;
+  --c-sw: #7c4ddb;
+  --c-rap: #98583a;
+  --c-exam: #c2417c;
+  --c-mil: #d23b3b;
+  --dw: 12px;
+  --label: 230px;
+  --font: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161d; --surface: #1a2029; --ink: #e8ecf2; --ink-2: #9aa5b6; --line: #2b3441;
+    --accent: #6ea0ff; --today: #ff6b6b;
+    --c-admin: #8b93a1; --c-plan: #5b93f0; --c-net: #3fb584; --c-hw: #ee8a35;
+    --c-sw: #a07df0; --c-rap: #c5805f; --c-exam: #e2689f; --c-mil: #ff6b6b;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161d; --surface: #1a2029; --ink: #e8ecf2; --ink-2: #9aa5b6; --line: #2b3441;
+  --accent: #6ea0ff; --today: #ff6b6b;
+  --c-admin: #8b93a1; --c-plan: #5b93f0; --c-net: #3fb584; --c-hw: #ee8a35;
+  --c-sw: #a07df0; --c-rap: #c5805f; --c-exam: #e2689f; --c-mil: #ff6b6b;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.45; }
+.page { max-width: 1180px; margin: 0 auto; padding: 24px 16px 40px; display: flex; flex-direction: column; gap: 20px; }
+h1 { font-size: 26px; font-weight: 600; margin: 0; text-wrap: balance; }
+.sub { color: var(--ink-2); margin: 2px 0 0; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.tile b { display: block; font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.tile span { color: var(--ink-2); font-size: 13px; }
+.controls { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; }
+.chips, .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface);
+  border-radius: 999px; padding: 4px 11px; font-size: 13px; }
+.chip i { width: 10px; height: 10px; border-radius: 3px; background: var(--c); display: inline-block; }
+.chip[aria-pressed="false"] { opacity: .45; }
+.chip[aria-pressed="false"] i { background: transparent; border: 1px solid var(--c); }
+.seg button { border: 1px solid var(--line); background: var(--surface); padding: 4px 12px; font-size: 13px; border-radius: 6px; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.gantt { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; }
+.inner { position: relative; width: calc(var(--label) + var(--dw) * 105); }
+.hrow { display: flex; height: 26px; }
+.hrow .lab { width: var(--label); flex: none; position: sticky; left: 0; z-index: 3; background: var(--surface);
+  border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: 12px; color: var(--ink-2); padding: 4px 10px; }
+.hrow .trk { position: relative; flex: none; width: calc(var(--dw) * 105); border-bottom: 1px solid var(--line); }
+.hcell { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--line); padding: 4px 0 0 5px; font-size: 11px;
+  color: var(--ink-2); white-space: nowrap; overflow: hidden; font-family: var(--mono); }
+.hrow.months .hcell { font-family: var(--font); font-size: 12px; font-weight: 500; color: var(--ink); }
+.row { display: flex; height: 42px; border-bottom: 1px solid var(--line); }
+.row:last-child { border-bottom: 0; }
+.row.hide { display: none; }
+.row .lab { width: var(--label); flex: none; position: sticky; left: 0; z-index: 3; background: var(--surface);
+  border-right: 1px solid var(--line); padding: 4px 10px; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+.row .lab b { font-weight: 500; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .lab small { color: var(--ink-2); font-size: 11.5px; font-family: var(--mono); }
+.row .trk { position: relative; flex: none; width: calc(var(--dw) * 105);
+  background-image: repeating-linear-gradient(to right, var(--line) 0 1px, transparent 1px calc(var(--dw) * 7)); }
+.row.sel .lab { background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.bar { position: absolute; top: 9px; height: 24px; border-radius: 5px; border: 2px solid var(--c); padding: 0 6px;
+  background: var(--c); color: #fff; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px;
+  overflow: hidden; white-space: nowrap; min-width: 8px; }
+.bar.planned { background: color-mix(in srgb, var(--c) 16%, var(--surface)); color: var(--ink); border-style: dashed; }
+.bar.done { background: color-mix(in srgb, var(--c) 55%, var(--surface)); border-color: color-mix(in srgb, var(--c) 55%, var(--surface)); }
+.bar.ms { width: 22px !important; height: 22px; top: 10px; transform: rotate(45deg); border-radius: 3px; padding: 0; min-width: 0; justify-content: center; }
+.bar.ms span { transform: rotate(-45deg); }
+.bar.ms.planned { background: var(--surface); }
+.row.sel .bar { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); }
+.today { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--today); z-index: 2; pointer-events: none; }
+.today em { position: absolute; top: 2px; left: 4px; font-style: normal; font-size: 11px; font-weight: 600; color: var(--today);
+  background: var(--surface); padding: 0 3px; border-radius: 3px; font-family: var(--mono); white-space: nowrap; }
+
+.detail { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 10px; }
+.detail h2 { margin: 0; font-size: 18px; font-weight: 600; text-wrap: balance; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--ink-2); font-size: 13.5px; }
+.meta b { color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+.detail p { margin: 0; max-width: 70ch; }
+.status { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.status button { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 5px 12px; font-size: 13px; }
+.status button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.status span { font-size: 13px; color: var(--ink-2); margin-right: 4px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 22px; height: 12px; border-radius: 3px; border: 2px solid var(--ink-2); display: inline-block; }
+.sw.p { border-style: dashed; background: transparent; }
+.sw.i { background: var(--ink-2); }
+.sw.d { background: color-mix(in srgb, var(--ink-2) 50%, var(--surface)); border-color: color-mix(in srgb, var(--ink-2) 50%, var(--surface)); }
+.note { font-size: 12.5px; color: var(--ink-2); margin: 0; }
+.tools { display: flex; flex-wrap: wrap; gap: 6px; }
+.tools button, .status button.edit { border: 1px solid var(--line); background: var(--surface); padding: 4px 12px; font-size: 13px; border-radius: 6px; }
+.status button.edit { margin-left: auto; background: var(--bg); padding: 5px 12px; }
+.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px 14px; }
+.form label { display: grid; gap: 4px; font-size: 13px; color: var(--ink-2); }
+.form .wide { grid-column: 1 / -1; }
+.form .chk { display: flex; align-items: center; gap: 8px; align-self: end; color: var(--ink); }
+.form input, .form select, .form textarea { font: inherit; font-size: 14px; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; width: 100%; }
+.form input[type="checkbox"] { width: auto; }
+.form input:focus-visible, .form select:focus-visible, .form textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.err { margin: 0; color: var(--today); font-size: 13.5px; min-height: 1.2em; }
+#exp { width: 100%; font-family: var(--mono); font-size: 12px; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+@media (max-width: 600px) { :root { --label: 130px; } h1 { font-size: 22px; } .row .lab small { display: none; } }
+@media (prefers-reduced-motion: no-preference) { .bar { transition: box-shadow .15s; } }
+</style>
+</head>
+<body>
+<main class="page">
+  <header>
+    <h1>Tidsplan for Spritdispenser</h1>
+    <p class="sub">3. semester IoMT, 3. sep til 9. dec 2026. Klik på en række for detaljer.</p>
+  </header>
+
+  <section class="tiles" aria-label="Overblik">
+    <div class="tile"><b id="tRep">–</b><span>dage til rapportaflevering (2. dec kl. 12)</span></div>
+    <div class="tile"><b id="tExam">–</b><span>dage til mundtlig eksamen (9. dec)</span></div>
+    <div class="tile"><b id="tDone">–</b><span>punkter markeret færdige</span></div>
+  </section>
+
+  <section class="controls">
+    <div class="chips" id="chips" aria-label="Filtrér kategori"></div>
+    <div class="seg" id="zoom" aria-label="Zoom">
+      <button data-dw="7" aria-pressed="false">Kompakt</button>
+      <button data-dw="12" aria-pressed="true">Normal</button>
+      <button data-dw="20" aria-pressed="false">Stor</button>
+    </div>
+  </section>
+
+  <div class="tools">
+    <button id="bNew">+ Nyt punkt</button>
+    <button id="bCopy">Kopiér data</button>
+    <button id="bReset">Nulstil til original</button>
+  </div>
+  <p class="note" id="msg" role="status"></p>
+  <textarea id="exp" rows="8" hidden aria-label="Data til kopiering"></textarea>
+
+  <section class="gantt" id="gantt" aria-label="Gantt-diagram"></section>
+
+  <div class="legend">
+    <span><i class="sw p"></i> Planlagt</span>
+    <span><i class="sw i"></i> I gang</span>
+    <span><i class="sw d"></i> Færdig</span>
+    <span><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="3" y="3" width="8" height="8" transform="rotate(45 7 7)" fill="currentColor"/></svg> Milepæl</span>
+    <span><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="6" y="0" width="2" height="14" fill="var(--today)"/></svg> I dag</span>
+  </div>
+
+  <section class="detail" id="detail" aria-live="polite"></section>
+  <p class="note">Klik på en række og tryk Rediger for at ændre tekst, datoer og status. Alle rettelser gemmes kun i din egen browser. Teksterne følger den faktiske løsning (OpenCV og Flask).</p>
+</main>
+
+<script>
+var START = Date.UTC(2026, 7, 31);   // mandag uge 36
+var DAYS = 105;                       // til og med søndag 13. dec
+var MON = ["jan","feb","mar","apr","maj","jun","jul","aug","sep","okt","nov","dec"];
+var MONFULL = ["januar","februar","marts","april","maj","juni","juli","august","september","oktober","november","december"];
+var CATS = {
+  "Administration": "--c-admin", "Planlægning": "--c-plan", "Netværk & Linux": "--c-net",
+  "Hardware & Python": "--c-hw", "Software & Web": "--c-sw", "Rapport": "--c-rap",
+  "Eksamen": "--c-exam", "Milepæl": "--c-mil"
+};
+var TASKS = [
+  {t:"Gruppedannelse og introduktion", s:"2026-09-03", e:"2026-10-12", c:"Administration", st:"done",
+   d:"Introduktion til semestret, idégenerering og gruppedannelse på itslearning."},
+  {t:"Projektforslag og diagrammer", s:"2026-10-12", e:"2026-10-26", c:"Planlægning", st:"done",
+   d:"Skriftligt projektforslag, ikke-teknisk systemtegning, systemtegning og checkliste."},
+  {t:"Aflevering uge 44", s:"2026-10-26", e:"2026-10-28", c:"Milepæl", ms:true, st:"done",
+   d:"Aflevering 26. okt. kl. 12. Midlertidig godkendelse af undervisere 28. okt."},
+  {t:"Netværk og Cisco OSPF", s:"2026-10-28", e:"2026-11-13", c:"Netværk & Linux", st:"prog",
+   d:"To Cisco-routere med OSPF, VLAN og ACL. Mangler fysisk opsætning, DHCP, port security og Wireshark-målinger."},
+  {t:"Linux-server, PostgreSQL og MQTT", s:"2026-11-02", e:"2026-11-16", c:"Netværk & Linux", st:"prog",
+   d:"Hardening af Linux-server (sudoers, logging, firewall), Mosquitto med TLS og PostgreSQL. Backup-script mangler SSH til backup-maskinen."},
+  {t:"Endelig godkendelse uge 46", s:"2026-11-09", e:"2026-11-09", c:"Milepæl", ms:true, st:"done",
+   d:"Aflevering kl. 12 og endelig godkendelse kl. 16. Første fulde projektdag."},
+  {t:"Raspberry Pi: hånd, kamera og servo", s:"2026-11-09", e:"2026-11-20", c:"Hardware & Python", st:"prog",
+   d:"HC-SR04 registrerer hånden, OpenCV (hudfarve og bevægelse) godkender gnidning, servoen trykker på pumpen. Mangler test af servoens kraft."},
+  {t:"ESP32: niveau og vibrationsmotor", s:"2026-11-11", e:"2026-11-20", c:"Hardware & Python", st:"prog",
+   d:"HC-SR04 måler væskestand, vibrationsmotor og LED giver feedback. Sendes over Wi-Fi og MQTT med TLS. Mangler løsning på MQTT-fejl og kalibrering."},
+  {t:"Flask-API og dashboard", s:"2026-11-16", e:"2026-11-25", c:"Software & Web", st:"prog",
+   d:"REST API i Flask og Plotly-dashboard. Mangler bearer token, HTTPS og SQL med GROUP BY og HAVING."},
+  {t:"Bash-backup og pytest", s:"2026-11-20", e:"2026-11-27", c:"Software & Web", st:"prog",
+   d:"Natlig backup af begge databaser, krypteret med gpg og sendt til andet LAN. Enhedstests med pytest."},
+  {t:"Rapportskrivning (25-35 sider)", s:"2026-10-26", e:"2026-12-02", c:"Rapport", st:"prog",
+   d:"Løbende dokumentation i EK-skabelonen. Argumentation for programkvalitet og GDPR."},
+  {t:"Endelig rapportaflevering", s:"2026-12-02", e:"2026-12-02", c:"Milepæl", ms:true, st:"plan",
+   d:"Aflevering af rapport på WISEflow 2. dec. kl. 12."},
+  {t:"Eksamensforberedelse", s:"2026-12-02", e:"2026-12-09", c:"Eksamen", st:"plan",
+   d:"Fysisk testopstilling, præsentation (tre sider) og forberedelse til mundtlig eksamen fra 9. dec."}
+];
+var STATUS = {plan:"Planlagt", prog:"I gang", done:"Færdig"};
+var KEY = "gantt-tasks-v2";
+var DEFAULTS = JSON.parse(JSON.stringify(TASKS));
+var hidden = {};
+var selected = null;
+var editing = false, draft = null, delArmed = false;
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+
+function di(str) { var p = str.split("-").map(Number); return Math.round((Date.UTC(p[0], p[1]-1, p[2]) - START) / 864e5); }
+function fmt(str) { var p = str.split("-").map(Number); return p[2] + ". " + MON[p[1]-1]; }
+function isoWeek(ms) {
+  var d = new Date(ms), day = (d.getUTCDay() + 6) % 7;
+  d.setUTCDate(d.getUTCDate() - day + 3);
+  var ft = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+  return 1 + Math.round(((d - ft) / 864e5 - 3 + ((ft.getUTCDay() + 6) % 7)) / 7);
+}
+var now = new Date();
+var todayIdx = Math.round((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - START) / 864e5);
+
+try {
+  var saved = JSON.parse(localStorage.getItem(KEY) || "null");
+  if (Array.isArray(saved) && saved.length) TASKS = saved;
+} catch (e) {}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(TASKS)); } catch (e) {} }
+function cls(t) { return t.st === "done" ? "done" : t.st === "plan" ? "planned" : ""; }
+
+function header() {
+  var months = '<div class="hrow months"><div class="lab">Måned</div><div class="trk">', weeks = '<div class="hrow"><div class="lab">Aktivitet / uge</div><div class="trk">';
+  var i = 0;
+  while (i < DAYS) {
+    var d = new Date(START + i * 864e5), m = d.getUTCMonth(), j = i;
+    while (j < DAYS && new Date(START + j * 864e5).getUTCMonth() === m) j++;
+    months += '<div class="hcell" style="left:calc(var(--dw)*' + i + ');width:calc(var(--dw)*' + (j - i) + ')">' + MONFULL[m] + '</div>';
+    i = j;
+  }
+  for (var w = 0; w < DAYS / 7; w++) {
+    weeks += '<div class="hcell" style="left:calc(var(--dw)*' + (w * 7) + ');width:calc(var(--dw)*7)">' + isoWeek(START + w * 7 * 864e5) + '</div>';
+  }
+  return months + '</div></div>' + weeks + '</div></div>';
+}
+
+function build() {
+  var h = '<div class="inner" id="inner">' + header();
+  TASKS.forEach(function (t, i) {
+    var a = di(t.s), b = di(t.e), len = b - a + 1;
+    var tip = esc(t.t) + " · " + fmt(t.s) + (t.s !== t.e ? " til " + fmt(t.e) : "") + " · " + STATUS[t.st];
+    var mark = t.st === "done" ? "✓" : "";
+    var bar;
+    if (t.ms) {
+      bar = '<button class="bar ms ' + cls(t) + '" style="--c:var(' + CATS[t.c] + ');left:calc(var(--dw)*' + (a + 0.5) + ' - 11px)" title="' + tip + '" data-i="' + i + '"><span>' + mark + '</span></button>';
+    } else {
+      bar = '<button class="bar ' + cls(t) + '" style="--c:var(' + CATS[t.c] + ');left:calc(var(--dw)*' + a + ');width:calc(var(--dw)*' + len + ')" title="' + tip + '" data-i="' + i + '">' + mark + '</button>';
+    }
+    h += '<div class="row" data-i="' + i + '" data-c="' + t.c + '"><div class="lab"><b>' + esc(t.t) + '</b><small>' + fmt(t.s) + (t.s !== t.e ? " – " + fmt(t.e) : "") + '</small></div><div class="trk">' + bar + '</div></div>';
+  });
+  if (todayIdx >= 0 && todayIdx < DAYS) {
+    h += '<div class="today" id="todayLine" style="left:calc(var(--label) + var(--dw)*' + (todayIdx + 0.5) + ')"><em>i dag</em></div>';
+  }
+  h += '</div>';
+  document.getElementById("gantt").innerHTML = h;
+  applyFilter();
+  markSelected();
+}
+
+function applyFilter() {
+  document.querySelectorAll(".row").forEach(function (r) { r.classList.toggle("hide", !!hidden[r.dataset.c]); });
+}
+function markSelected() {
+  document.querySelectorAll(".row").forEach(function (r) { r.classList.toggle("sel", Number(r.dataset.i) === selected); });
+}
+
+function tiles() {
+  var rep = Date.UTC(2026, 11, 2), exam = Date.UTC(2026, 11, 9);
+  var today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  function days(x) { var n = Math.round((x - today) / 864e5); return n < 0 ? "0" : String(n); }
+  document.getElementById("tRep").textContent = days(rep);
+  document.getElementById("tExam").textContent = days(exam);
+  var d = TASKS.filter(function (t) { return t.st === "done"; }).length;
+  document.getElementById("tDone").textContent = d + " af " + TASKS.length;
+}
+
+function form(t, isNew) {
+  var opts = Object.keys(CATS).map(function (c) { return '<option' + (c === t.c ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join("");
+  return '<h2>' + (isNew ? 'Nyt punkt' : 'Rediger punkt') + '</h2><div class="form">' +
+    '<label class="wide">Titel<input id="fT" value="' + esc(t.t) + '"></label>' +
+    '<label>Start<input id="fS" type="date" value="' + t.s + '" min="2026-08-31" max="2026-12-13"></label>' +
+    '<label>Slut<input id="fE" type="date" value="' + t.e + '" min="2026-08-31" max="2026-12-13"></label>' +
+    '<label>Kategori<select id="fC">' + opts + '</select></label>' +
+    '<label class="chk"><input id="fM" type="checkbox"' + (t.ms ? ' checked' : '') + '> Milepæl (diamant på startdatoen)</label>' +
+    '<label class="wide">Beskrivelse<textarea id="fD" rows="3">' + esc(t.d) + '</textarea></label></div>' +
+    '<p class="err" id="fErr" role="alert"></p>' +
+    '<div class="status"><button data-act="save">Gem</button><button data-act="cancel">Annuller</button>' +
+    (isNew ? '' : '<button data-act="del">Slet punkt</button>') + '</div>';
+}
+
+function detail() {
+  var el = document.getElementById("detail");
+  if (draft) { el.innerHTML = form(draft, true); return; }
+  if (selected === null || !TASKS[selected]) { el.innerHTML = "<p>Vælg et punkt i diagrammet, eller tryk Nyt punkt.</p>"; return; }
+  var t = TASKS[selected];
+  if (editing) { el.innerHTML = form(t, false); return; }
+  var a = di(t.s), b = di(t.e), len = b - a + 1;
+  var left = b - todayIdx;
+  var rest = t.st === "done" ? "Færdig" : left < 0 ? "Slutdatoen er overskredet med " + (-left) + (left === -1 ? " dag" : " dage") : left === 0 ? "Slutter i dag" : left + (left === 1 ? " dag" : " dage") + " til slut";
+  var btns = Object.keys(STATUS).map(function (k) {
+    return '<button data-st="' + k + '" aria-pressed="' + (t.st === k) + '">' + STATUS[k] + '</button>';
+  }).join("");
+  el.innerHTML = '<h2>' + esc(t.t) + '</h2>' +
+    '<div class="meta"><span>Kategori: <b>' + esc(t.c) + '</b></span><span>Periode: <b>' + fmt(t.s) + (t.s !== t.e ? " til " + fmt(t.e) : "") + '</b></span>' +
+    '<span>Varighed: <b>' + len + (len === 1 ? " dag" : " dage") + '</b></span><span><b>' + rest + '</b></span></div>' +
+    '<p>' + esc(t.d) + '</p><div class="status"><span>Status:</span>' + btns + '<button class="edit" data-act="edit">Rediger</button></div>';
+}
+
+function commit() {
+  save();
+  var g = document.getElementById("gantt"), x = g.scrollLeft;
+  build(); g.scrollLeft = x; tiles(); detail();
+}
+function selectTask(i) { selected = i; editing = false; draft = null; delArmed = false; markSelected(); detail(); }
+
+function saveForm() {
+  var title = document.getElementById("fT").value.trim();
+  var s = document.getElementById("fS").value, en = document.getElementById("fE").value;
+  var ms = document.getElementById("fM").checked;
+  if (ms) en = s;
+  var err = "";
+  if (!title) err = "Skriv en titel.";
+  else if (!s || !en) err = "Vælg både start- og slutdato.";
+  else if (en < s) err = "Slutdatoen kan ikke ligge før startdatoen.";
+  else if (di(s) < 0 || di(en) >= DAYS) err = "Datoerne skal ligge mellem 31. aug og 13. dec 2026.";
+  if (err) { document.getElementById("fErr").textContent = err; return; }
+  var t = draft || TASKS[selected];
+  t.t = title; t.s = s; t.e = en; t.ms = ms;
+  t.c = document.getElementById("fC").value; t.d = document.getElementById("fD").value.trim();
+  if (draft) { t.st = "plan"; TASKS.push(t); selected = TASKS.length - 1; draft = null; }
+  editing = false; delArmed = false; commit();
+}
+
+document.getElementById("gantt").addEventListener("click", function (e) {
+  var r = e.target.closest(".row"); if (r) selectTask(Number(r.dataset.i));
+});
+document.getElementById("detail").addEventListener("click", function (e) {
+  var b = e.target.closest("button"); if (!b) return;
+  var act = b.dataset.act;
+  if (b.dataset.st && selected !== null) { TASKS[selected].st = b.dataset.st; commit(); }
+  else if (act === "edit") { editing = true; detail(); }
+  else if (act === "cancel") { editing = false; draft = null; delArmed = false; detail(); }
+  else if (act === "save") saveForm();
+  else if (act === "del") {
+    if (!delArmed) { delArmed = true; b.textContent = "Tryk igen for at slette"; return; }
+    TASKS.splice(selected, 1); selected = TASKS.length ? 0 : null; editing = false; delArmed = false; commit();
+  }
+});
+
+function say(m) { document.getElementById("msg").textContent = m; }
+document.getElementById("bNew").addEventListener("click", function () {
+  var d = new Date(START + Math.min(Math.max(todayIdx, 0), DAYS - 1) * 864e5).toISOString().slice(0, 10);
+  draft = {t: "", s: d, e: d, c: "Rapport", d: "", st: "plan"}; editing = false; detail();
+  document.getElementById("detail").scrollIntoView({block: "nearest"});
+});
+document.getElementById("bCopy").addEventListener("click", function () {
+  var txt = JSON.stringify(TASKS, null, 1), box = document.getElementById("exp");
+  function fallback() { box.value = txt; box.hidden = false; box.select(); say("Markér teksten og kopiér den selv (Ctrl+C)."); }
+  try { navigator.clipboard.writeText(txt).then(function () { box.hidden = true; say("Data kopieret."); }, fallback); } catch (e) { fallback(); }
+});
+var resetTimer = null;
+document.getElementById("bReset").addEventListener("click", function () {
+  var b = this;
+  if (!resetTimer) {
+    b.textContent = "Tryk igen for at nulstille";
+    resetTimer = setTimeout(function () { resetTimer = null; b.textContent = "Nulstil til original"; }, 4000);
+    return;
+  }
+  clearTimeout(resetTimer); resetTimer = null; b.textContent = "Nulstil til original";
+  TASKS = JSON.parse(JSON.stringify(DEFAULTS)); try { localStorage.removeItem(KEY); } catch (e) {}
+  selected = 0; editing = false; draft = null; commit(); say("Nulstillet til den oprindelige plan.");
+});
+document.getElementById("zoom").addEventListener("click", function (e) {
+  var b = e.target.closest("button"); if (!b) return;
+  document.documentElement.style.setProperty("--dw", b.dataset.dw + "px");
+  document.querySelectorAll("#zoom button").forEach(function (x) { x.setAttribute("aria-pressed", x === b); });
+  scrollToToday();
+});
+
+var chips = document.getElementById("chips");
+Object.keys(CATS).forEach(function (c) {
+  var b = document.createElement("button");
+  b.className = "chip"; b.setAttribute("aria-pressed", "true"); b.style.setProperty("--c", "var(" + CATS[c] + ")");
+  b.innerHTML = "<i></i>" + c;
+  b.addEventListener("click", function () {
+    hidden[c] = !hidden[c]; b.setAttribute("aria-pressed", String(!hidden[c])); applyFilter();
+  });
+  chips.appendChild(b);
+});
+
+function scrollToToday() {
+  var g = document.getElementById("gantt");
+  var dw = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--dw"));
+  var lab = parseFloat(getComputedStyle(g.querySelector(".lab")).width);
+  var x = todayIdx * dw - (g.clientWidth - lab) / 3;
+  g.scrollLeft = Math.max(0, x);
+}
+
+for (var k = 0; k < TASKS.length; k++) { if (TASKS[k].st === "prog") { selected = k; break; } }
+build(); tiles(); detail(); scrollToToday();
+</script>
+</body>
+</html>

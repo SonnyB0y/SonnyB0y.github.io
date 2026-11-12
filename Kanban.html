@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spritdispenser – 3. semester</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style id="css">
+:root{
+  --bg:#f4f2ee;--panel:#ebe8e2;--card:#fff;--ink:#1d1c1a;--muted:#6f6b64;--line:#dcd8d0;
+  --accent:#2f5bea;--danger:#c4382f;
+  --l-red:#f6d5d1;--l-red-i:#8f2a22;--l-yellow:#f8e9b8;--l-yellow-i:#7a5a00;
+  --l-green:#d3ecd7;--l-green-i:#24603a;--l-blue:#d6e2fb;--l-blue-i:#23449e;
+  --l-purple:#e6dcf6;--l-purple-i:#5a3596;--l-gray:#e3e1dc;--l-gray-i:#4d4a45;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#18181a;--panel:#222225;--card:#2c2c30;--ink:#ecebe8;--muted:#9b9893;--line:#38383c;
+  --accent:#7a9bff;--danger:#ff7b70;
+  --l-red:#4a2522;--l-red-i:#ffb3aa;--l-yellow:#463a14;--l-yellow-i:#f5d77a;
+  --l-green:#1f3d27;--l-green-i:#9edbad;--l-blue:#1f2d52;--l-blue-i:#a9c0ff;
+  --l-purple:#352650;--l-purple-i:#cfb7f5;--l-gray:#38383c;--l-gray-i:#c8c5bf;
+}}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;-webkit-font-smoothing:antialiased}
+button,input,textarea,select{font:inherit;color:inherit}
+header{display:flex;align-items:center;gap:12px;padding:18px 24px 10px;flex-wrap:wrap}
+#title{font-size:22px;font-weight:700;border:0;background:transparent;padding:4px 6px;margin-left:-6px;border-radius:6px;min-width:120px;max-width:100%}
+#title:hover,#title:focus{background:var(--panel);outline:none}
+.spacer{flex:1}
+#search{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 10px;width:220px;max-width:100%}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 12px;cursor:pointer;font-weight:500}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.danger{color:var(--danger)}
+.status{font-size:12px;color:var(--muted);min-width:70px;text-align:right}
+#board{display:flex;gap:14px;padding:10px 24px 28px;overflow-x:auto;align-items:flex-start;min-height:calc(100vh - 80px)}
+.col{background:var(--panel);border-radius:12px;width:290px;flex:0 0 290px;display:flex;flex-direction:column;max-height:calc(100vh - 110px)}
+.col-head{display:flex;align-items:center;gap:6px;padding:12px 12px 6px}
+.col-name{font-weight:600;border:0;background:transparent;padding:3px 5px;border-radius:5px;flex:1;min-width:0}
+.col-name:hover,.col-name:focus{background:var(--card);outline:none}
+.count{font-size:12px;color:var(--muted);background:var(--card);border-radius:10px;padding:1px 8px}
+.icon{border:0;background:transparent;cursor:pointer;color:var(--muted);border-radius:5px;padding:2px 6px;font-size:15px;line-height:1}
+.icon:hover{background:var(--card);color:var(--ink)}
+.cards{padding:4px 10px 6px;overflow-y:auto;flex:1;min-height:40px;display:flex;flex-direction:column;gap:8px}
+.cards.over{background:color-mix(in srgb,var(--accent) 8%,transparent);border-radius:8px}
+.card{background:var(--card);border-radius:9px;padding:10px 12px;box-shadow:0 1px 2px rgba(0,0,0,.08);cursor:grab;border:1px solid transparent}
+.card:hover{border-color:var(--line)}
+.card.dragging{opacity:.4}
+.card h4{margin:0;font-size:14px;font-weight:500;line-height:1.35;word-wrap:break-word}
+.card p{margin:5px 0 0;color:var(--muted);font-size:12.5px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center}
+.tag{font-size:11px;font-weight:600;padding:2px 7px;border-radius:5px}
+.due{font-size:11.5px;color:var(--muted)}
+.due.late{color:var(--danger);font-weight:600}
+.who{font-size:11.5px;color:var(--muted);margin-left:auto}
+.add{margin:4px 10px 10px;border:0;background:transparent;text-align:left;padding:8px;border-radius:8px;cursor:pointer;color:var(--muted)}
+.add:hover{background:var(--card);color:var(--ink)}
+.newcol{flex:0 0 220px;border:2px dashed var(--line);border-radius:12px;padding:14px;background:transparent;cursor:pointer;color:var(--muted);font-weight:500}
+.newcol:hover{border-color:var(--muted);color:var(--ink)}
+.drop-mark{height:3px;background:var(--accent);border-radius:2px;margin:-2px 0}
+dialog{border:0;border-radius:14px;padding:0;width:min(480px,94vw);background:var(--card);color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+dialog::backdrop{background:rgba(0,0,0,.35)}
+.dlg{padding:20px;display:flex;flex-direction:column;gap:12px}
+.dlg label{font-size:12px;font-weight:600;color:var(--muted);display:flex;flex-direction:column;gap:5px}
+.dlg input,.dlg textarea,.dlg select{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--bg)}
+.dlg textarea{min-height:90px;resize:vertical}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.labels{display:flex;gap:6px;flex-wrap:wrap}
+.labels button{border:2px solid transparent;cursor:pointer}
+.labels button.on{border-color:var(--ink)}
+.dlg-foot{display:flex;gap:8px;align-items:center;margin-top:4px}
+.empty{color:var(--muted);font-size:12.5px;text-align:center;padding:10px 0}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="application/json" id="state">{"title":"Spritdispenser – 3. semester","savedAt":1794482047671,"columns":[{"id":"c1","name":"Backlog","cards":[{"title":"Rapport: Indledende undersøgelse","desc":"Ideudvikling og Research er næsten tomme. Underbyg problemstillingen med kilder eller interview (krav i oplægget).","label":"yellow","due":"","who":"","id":"k1"},{"title":"Rapport: Konfiguration af valgte servere","desc":"Afsnittet under Netværk er tomt. Beskriv Pi/Linux-server, Mosquitto, PostgreSQL og backup-server.","label":"yellow","due":"","who":"","id":"k2"},{"title":"Rapport: 11 kriterier for programkvalitet","desc":"Argumentér for valg + fordele/ulemper for alle 11 (funktionalitet, læsbarhed … sikkerhed). Obligatorisk.","label":"yellow","due":"","who":"","id":"k3"},{"title":"Rapport: GDPR og sikring af sundhedsdata","desc":"Obligatorisk i Netværk. Beskriv at kamerabilleder kun analyseres i hukommelsen og aldrig gemmes (dataminimering), og hvad der gemmes i PostgreSQL.","label":"yellow","due":"","who":"","id":"k4"},{"title":"Rapport: Konklusion, projektforløb, perspektivering","desc":"Skrives når implementering og test er færdige.","label":"yellow","due":"","who":"","id":"k6"},{"title":"Prototypekasse (IP54)","desc":"Byg kabinet til Pi, servo, kamera og ESP32. Krav om IP54 mod spritstænk.","label":"purple","due":"2026-12-02","who":"","id":"k7"},{"title":"Endelig rapportaflevering (WISEflow)","desc":"Aflevering 2. dec. kl. 12. 25–35 sider i EK-skabelonen.","label":"red","due":"2026-12-02","who":"","id":"k9"},{"title":"Eksamensforberedelse og demo","desc":"Fysisk testopstilling og forberedelse til mundtlig eksamen.","label":"red","due":"2026-12-09","who":"","id":"k10"},{"title":"Rapport: Lovgivning og bæredygtighed (6.5, 6.6)","desc":"Hver ca. en halv side. Rapporten nævner endnu ikke EMC, RFI, RoHS, WEEE, IP-klasser, bæredygtighed eller sikkerhed. Alle er obligatoriske i checklisten (IP54 til kassen).","label":"yellow","due":"2026-11-30","who":"","id":"n1"},{"title":"Rapport: Linux-afsnit (kap. 9)","desc":"Afsnittet er tomt. Beskriv hvilket OS Pi'en kører (cat /etc/os-release), hvorfor, og hvad det bruges til: Mosquitto, PostgreSQL, Flask, UFW, cron og backup.","label":"yellow","due":"2026-11-30","who":"","id":"n2"},{"title":"Rapport: Teori udvalgte elementer (7.4)","desc":"Afsnittet er tomt. Teori og hvordan det er brugt: OpenCV (hudfarve og bevægelse), MQTT/TLS, HC-SR04, PostgreSQL, Flask og pytest. OpenCV nævnes slet ikke i rapporten endnu.","label":"yellow","due":"2026-11-30","who":"","id":"n3"},{"title":"Rapport: Tynde afsnit der skal uddybes","desc":"Under ca. 500 tegn: Resume, Indledning, Ideudvikling, Research, Brugerundersøgelse, Business case/SMART, Programmering, Netværk, WBS, Gantt, Kanban (tomt), Implementering, Projektforløbet.","label":"yellow","due":"2026-11-30","who":"","id":"n6"},{"title":"KRAV.docx: udfyld diskussion og ret kravene","desc":"Diskussionsfeltet er tomt for alle 10 krav. Krav 1 siger 20 cm, men koden bruger 15 cm (HAND_CM). Krav 6 mangler video/link. Krav 10 er ufærdig og har samme accepttest som krav 9.","label":"yellow","due":"2026-11-27","who":"","id":"n7"},{"title":"Præsentation til eksamen","desc":"Tre sider: Indlejrede Systemer (blokdiagram), Programmering (argumenter for kodevalg, fokus på programkvalitet) og Virksomhed (Riget).","label":"red","due":"2026-12-08","who":"","id":"n8"},{"title":"Bilag: stykliste og kildekode","desc":"Upload stykliste og kildekode (ZIP eller link til GitHub). Ryd op i koden og fjern hemmeligheder først.","label":"yellow","due":"2026-12-02","who":"","id":"n9"},{"title":"Ret forældet tekst i tidsplan og checkliste","desc":"Tidsplan.docx og Samlet_Checkliste nævner stadig MediaPipe og FastAPI, men koden bruger OpenCV (hudfarve og bevægelse) og Flask. Ret også rapporten, så teksten passer til den faktiske løsning.","label":"yellow","due":"2026-11-27","who":"","id":"n24"}]},{"id":"c2","name":"Skal laves","cards":[{"title":"Linux-hardening af serveren","desc":"UFW-regler fra netværksplanen, stram sudoers, SSH kun med nøgle-login og faste IP'er.","label":"gray","due":"2026-11-16","who":"","id":"k12"},{"title":"Netværk: OSPF, VLAN og ACL","desc":"Packet Tracer-filen findes. Sæt de to Cisco 1941 op fysisk og verificér med show ip ospf neighbor og show access-lists.","label":"green","due":"2026-11-13","who":"","id":"k20"},{"title":"pytest-tests","desc":"Enhedstests af db.py og API (tokens, input).","label":"blue","due":"2026-11-27","who":"","id":"k18"},{"title":"Accepttest og brugertest","desc":"Kør accepttestproceduren fra rapporten og notér resultater.","label":"yellow","due":"2026-11-27","who":"","id":"k19"},{"title":"API: bearer token i stedet for X-API-Key","desc":"Checklisten (X) og projektforslaget kræver bearer token: Authorization: Bearer \u003ctoken>. app.py bruger i dag headeren X-API-Key.","label":"blue","due":"2026-11-25","who":"","id":"n10"},{"title":"API: requests-klient og .env i stedet for YAML","desc":"Checklisten (X): Requests (lille Python-klient, der henter /api/status). YAML bruges ikke: indstillinger og hemmeligheder ligger i .env (indlæses af db.py, ligger ikke i git) og data i PostgreSQL. Beskriv valget i rapporten under programkvalitet (sikkerhed, vedligeholdelse), og ret YAML i checklisten/forslaget.","label":"blue","due":"2026-11-25","who":"","id":"n11"},{"title":"PostgreSQL: GROUP BY/HAVING og stored procedure","desc":"Projektforslaget lover SQL med GROUP BY og HAVING samt en stored procedure til statistik (fx gnidninger pr. dag og andel godkendte). Findes ikke i db.py endnu.","label":"blue","due":"2026-11-25","who":"","id":"n12"},{"title":"HTTPS til dashboardet","desc":"Forslaget og checklisten (HTTP/HTTPS, X): Flask kører i dag på HTTP port 8000. Sæt TLS på (certifikat fra egen CA som til MQTT, eller reverse proxy).","label":"blue","due":"2026-11-27","who":"","id":"n13"},{"title":"GitHub: fjern hemmeligheder før push","desc":"Wi-Fi-kode i ESP32.ino, kodeord i kode og filer, .env, backup.conf og .gpg_pass skal i .gitignore med eksempelfiler. Skift database- og MQTT-kodeord (har stået i chat og kode).","label":"gray","due":"2026-11-13","who":"","id":"n14"},{"title":"GitHub: pull requests og ét samlet repo","desc":"Checklisten (X): brug feature-branches og lav pull requests med review. Først: fjern den indlejrede .git i backup-mappen, så alt ligger i ét repo.","label":"blue","due":"2026-11-20","who":"","id":"n15"},{"title":"Kode: PEP 8, docstrings og oprydning","desc":"Projektforslaget lover PEP 8. Kør flake8/pyflakes, slet ubrugt kode, tilføj docstrings og gennemgå de 11 kriterier for programkvalitet.","label":"blue","due":"2026-11-27","who":"","id":"n16"},{"title":"Concurrency: dokumentér threading","desc":"Projektforslaget nævner asyncio/threading. main.py bruger threading (hånd-loop, session, Lock) og Flask, ikke FastAPI. Beskriv det i rapporten, eller ret forslaget.","label":"blue","due":"2026-11-27","who":"","id":"n17"},{"title":"ESP32: TLS, kodeord og kalibrering","desc":"Sæt USE_TLS 1 med ca_crt.h, flyt Wi-Fi og MQTT-kodeord til secrets.h (ikke i git). Kalibrér LEVEL_EMPTY og LEVEL_FULL med rigtig flaske, og lav tjek for urealistiske målinger.","label":"purple","due":"2026-11-20","who":"","id":"n19"},{"title":"Servo: nok kraft til pumpen","desc":"MG90S er for svag. Mål pumpens kraft, og vælg kortere arm eller kraftigere servo (fx MG996R med egen forsyning). Servoen sidder på GPIO17, så SERVO_PIN i main.py skal rettes.","label":"purple","due":"2026-11-20","who":"","id":"n20"},{"title":"Linux: logging og brugerovervågning","desc":"Checklisten (X): system logging (rsyslog, journalctl, logrotate), remote logging til backup-maskinen, who/w/last, sudoers, filrettigheder. Forslaget: root-login slået fra og SSH kun med nøgler. Dokumentér med skærmbilleder.","label":"gray","due":"2026-11-16","who":"","id":"n21"},{"title":"Netværk: DHCP, port security og Wireshark","desc":"Checklisten (X): DHCP til IoT-VLAN, port security, WPA2/WPA3, og Wireshark/tcpdump som viser, at MQTT er krypteret (TLS), og at OSPF-ruter udveksles. Tag skærmbilleder.","label":"green","due":"2026-11-13","who":"","id":"n22"}]},{"id":"c3","name":"I gang","cards":[{"title":"Løbende rapportskrivning","desc":"Dokumentér i EK-skabelonen undervejs.","label":"yellow","due":"2026-12-02","who":"","id":"k23"},{"title":"Bash backup-script","desc":"pg_dump af spritbeholdning og video, krypteret med gpg og sendt med rsync over SSH til LAN 2 hver nat kl. 00:01 (cron). Obligatorisk. Status: backup.sh og backup.conf.example er skrevet. Mangler: SSH til Windows-maskinen (10.178.40.43, bruger skole). Pi ser maskinen, men port 22 timer ud. Installér/start OpenSSH Server og åbn firewall port 22, eller brug Tailscale/en anden maskine. Windows har ikke rsync (brug scp). Derefter: ssh-copy-id, ret backup.conf, lav .gpg_pass, test ./backup.sh, sæt cron.","label":"gray","due":"2026-11-27","who":"","id":"k17"},{"title":"README.md på GitHub","desc":"Opsætning af server, MQTT, database og API, så censor kan køre koden.","label":"blue","due":"","who":"","id":"k8"},{"title":"Stykliste","desc":"Pi 4, kamera, MG90S servo, ESP32, HC-SR04, vibrationsmotor, 2× Cisco 1941.","label":"purple","due":"","who":"","id":"k27"},{"title":"Rapport: WBS, Gantt og Kanban","desc":"Udfyld projektledelsesafsnittet. Denne tavle kan bruges som dokumentation for Kanban.","label":"yellow","due":"","who":"","id":"k5"},{"title":"Eksamenskort (flashcards)","desc":"Artifact med eksamenskort. Der tilføjes kort løbende, når nye emner er gennemgået.","label":"blue","due":"","who":"","id":"n23"}]},{"id":"c4","name":"Færdig","cards":[{"title":"Projektforslag afleveret (uge 44)","desc":"Afleveret 26. okt.","label":"red","due":"2026-10-26","who":"","id":"k24"},{"title":"Hjemmeside: graf over spritniveau","desc":"web.py (Flask) henter niveau fra PostgreSQL og viser det i templates/bar.html med Plotly. Test på Pi'en på port 8000.","label":"blue","due":"2026-11-25","who":"","id":"k16"},{"title":"Rapport: Simulering og målinger (Falstad og oscilloskop)","desc":"Afkobling af servo og vibrationsmotor med og uden friløbsdiode (filerne afkobling.txt og vibrationsmotor.txt). Skærmbilleder, mål med oscilloskop med og uden kondensatorer, og sammenlign. Forklar ESR/ESL og antagelserne (fx L = 100 uH).","label":"yellow","due":"2026-11-30","who":"","id":"n5"},{"title":"Rapport: Wi-Fi, antenne, støj, imperfektioner og open loop","desc":"Checklisten har X ved Radio/Wi-Fi, (Antenner), Støj, Imperfektioner og Regulering/Open loop. Skriv teori og hvordan det bruges: ESP32 på Wi-Fi i IoT-VLAN (og dens indbyggede antenne), støj fra børstemotor og servo, uperfekte komponenter (ESR/ESL, spidser) og open loop (servo og pumpe styres uden feedback). Hvert element skal også analyseres ud fra de 11 kriterier (7.5).","label":"yellow","due":"2026-11-30","who":"","id":"n25"},{"title":"Rapport: Kredsløbsdiagram og beregninger","desc":"Kredsløbsafsnittet er meget kort. Indsæt kredsløbsdiagrammet (ret motor til +3V3 og servo til GPIO17) og beregningerne: spændingsdeler 3,3 V, basestrøm 2,6 mA, LED-modstand, motor 80 mA (datablad), friløbsdiode.","label":"yellow","due":"2026-11-30","who":"","id":"n4"},{"title":"Opdatér rapport/checkliste til den faktiske løsning","desc":"Checklisten nævner MediaPipe og FastAPI, men main.py bruger OpenCV-hudfarve, og app.py udgår. Ret teksten, så den passer til koden.","label":"yellow","due":"","who":"","id":"k22"},{"title":"Afkobling og motorstyring","desc":"100 nF + 100 µF over forsyningen ved ESP32 og servo. Transistor (2N2222) + diode til vibrationsmotoren.","label":"purple","due":"2026-11-20","who":"","id":"k15"},{"title":"Mosquitto MQTT-broker","desc":"Brugernavn/kodeord og TLS på port 8883 (main.py understøtter MQTT_TLS=1). ACL på topics sprit/*.","label":"gray","due":"2026-11-16","who":"","id":"k13"},{"title":"Systemtegninger","desc":"Ikke-teknisk og teknisk systemtegning (drawio + png).","label":"yellow","due":"","who":"","id":"k25"},{"id":"ycm6a8s","title":"Vibrationsmotor I rapport","desc":"Beskriv motor i rapport","who":"","due":"","label":"purple"},{"title":"Endelig godkendelse (uge 46)","desc":"Aflevering kl. 12, godkendelse kl. 16. Tjek at minimum 2 sensorer, 2 aktuatorer og alle obligatoriske teorielementer er med.","label":"red","due":"2026-11-09","who":"","id":"k11"},{"title":"Raspberry Pi: servo, hånd-sensor og kamera","desc":"main.py: HC-SR04 udløser servo, kamera godkender gnidning (10 s), logning i PostgreSQL. Test og justér SERVO_PRESS og hudfarve-grænser.","label":"purple","due":"2026-11-20","who":"","id":"k21"},{"title":"ESP32: væskestand + vibrationsmotor","desc":"ESP32-koden skal skrives. HC-SR04 til væskestand → sprit/level, vibrationsmotor på sprit/feedback, spænding → sprit/telemetry (main.py lytter allerede på dem). Wi-Fi i IoT-VLAN.","label":"purple","due":"2026-11-20","who":"","id":"k14"},{"title":"Checkliste over teorielementer","desc":"Udfyldt for Indlejrede Systemer, Netværk, Linux og Programmering.","label":"yellow","due":"","who":"","id":"k26"},{"title":"Netværksplan","desc":"IP-plan, VLAN 10/20, OSPF med MD5, ACL og UFW-regler.","label":"green","due":"","who":"","id":"k28"},{"title":"Databaseskema","desc":"db.py: doseringer, påfyldning, forsyningsspænding og gnide-sessioner.","label":"blue","due":"","who":"","id":"k29"},{"title":"API-øvelser del 1–4","desc":"YAML, API, token og Plotly (øvelser).","label":"blue","due":"","who":"","id":"k30"}]}]}</script>
+<script id="app">
+(function(){
+const CSS = document.getElementById('css').textContent;
+const APP = document.getElementById('app').textContent;
+const LS = 'kanban-board-v1';
+const LABELS = {red:'Milepæl',yellow:'Rapport',green:'Netværk',blue:'Programmering',purple:'Indlejret',gray:'Linux'};
+let state = JSON.parse(document.getElementById('state').textContent);
+try{ const loc = JSON.parse(localStorage.getItem(LS)||'null'); if(loc && loc.savedAt && (!state.savedAt || loc.savedAt > state.savedAt)) state = loc; }catch(e){}
+
+let art = null, timer = null, filter = '';
+const root = document.getElementById('root');
+const uid = () => Math.random().toString(36).slice(2,9);
+const esc = s => String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+root.innerHTML = `
+<header>
+  <input id="title" aria-label="Tavlens navn">
+  <div class="spacer"></div>
+  <input id="search" placeholder="Søg i kort…" aria-label="Søg">
+  <span class="status" id="status"></span>
+</header>
+<main id="board"></main>
+<dialog id="dlg"><form class="dlg" id="form">
+  <label>Titel<input name="title" required></label>
+  <label>Beskrivelse<textarea name="desc"></textarea></label>
+  <div class="row">
+    <label>Ansvarlig<input name="who"></label>
+    <label>Deadline<input name="due" type="date"></label>
+  </div>
+  <label>Kolonne<select name="col"></select></label>
+  <div style="display:flex;flex-direction:column;gap:5px"><span style="font-size:12px;font-weight:600;color:var(--muted)">Etiket</span><div class="labels" id="lbls"></div></div>
+  <div class="dlg-foot">
+    <button type="button" class="btn danger" id="del">Slet</button>
+    <div class="spacer"></div>
+    <button type="button" class="btn" id="cancel">Annuller</button>
+    <button class="btn primary">Gem</button>
+  </div>
+</form></dialog>`;
+
+const $ = id => document.getElementById(id);
+const board = $('board'), dlg = $('dlg'), form = $('form');
+
+function setStatus(t){ $('status').textContent = t; }
+
+function buildDoc(){
+  const json = JSON.stringify(state).replace(/</g,'\\u003c');
+  return '<!DOCTYPE html>\n<html lang="da">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>' + esc(state.title||'Kanban') + '</title>\n<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">\n<style id="css">' + CSS + '</style>\n</head>\n<body>\n<div id="root"></div>\n<script type="application/json" id="state">' + json + '<\/script>\n<script id="app">' + APP + '<\/script>\n</body>\n</html>\n';
+}
+
+function save(){
+  state.savedAt = Date.now();
+  try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){}
+  if(!art){ setStatus('Gemt lokalt'); return; }
+  setStatus('Gemmer…');
+  clearTimeout(timer);
+  timer = setTimeout(async () => {
+    if(dlg.open) return;
+    try{ await art.publish(buildDoc()); setStatus('Gemt'); }
+    catch(e){ setStatus(/not_(granted|writer)/.test(String(e&&(e.code||e.message||e))) ? 'Kun visning' : 'Ikke gemt'); }
+  }, 1200);
+}
+
+function findCard(id){
+  for(const c of state.columns){ const i = c.cards.findIndex(k=>k.id===id); if(i>-1) return {col:c,i,card:c.cards[i]}; }
+}
+
+function render(){
+  $('title').value = state.title || 'Kanban';
+  document.title = state.title || 'Kanban';
+  const today = new Date().toISOString().slice(0,10);
+  const q = filter.toLowerCase();
+  const lastCol = state.columns[state.columns.length-1];
+  board.innerHTML = state.columns.map(col => {
+    const cards = col.cards.filter(k => !q || (k.title+' '+k.desc+' '+k.who).toLowerCase().includes(q));
+    return `<section class="col" data-col="${col.id}">
+      <div class="col-head">
+        <input class="col-name" value="${esc(col.name)}" data-rename="${col.id}" aria-label="Kolonnenavn">
+        <span class="count">${col.cards.length}</span>
+        <button class="icon" title="Slet kolonne" data-delcol="${col.id}">×</button>
+      </div>
+      <div class="cards" data-drop="${col.id}">
+        ${cards.map(k => `<article class="card" draggable="true" data-card="${k.id}">
+          <h4>${esc(k.title)}</h4>
+          ${k.desc ? `<p>${esc(k.desc)}</p>` : ''}
+          ${(k.label||k.due||k.who) ? `<div class="meta">
+            ${k.label ? `<span class="tag" style="background:var(--l-${k.label});color:var(--l-${k.label}-i)">${LABELS[k.label]}</span>` : ''}
+            ${k.due ? `<span class="due ${k.due<today && col!==lastCol ? 'late':''}">📅 ${new Date(k.due+'T00:00').toLocaleDateString('da-DK',{day:'numeric',month:'short'})}</span>` : ''}
+            ${k.who ? `<span class="who">${esc(k.who)}</span>` : ''}
+          </div>` : ''}
+        </article>`).join('')}
+        ${!cards.length && q ? '<div class="empty">Ingen match</div>' : ''}
+      </div>
+      <button class="add" data-add="${col.id}">+ Tilføj kort</button>
+    </section>`;
+  }).join('') + '<button class="newcol" id="newcol">+ Ny kolonne</button>';
+}
+
+let editing = null, chosenLabel = '';
+function drawLabels(){
+  $('lbls').innerHTML = ['', ...Object.keys(LABELS)].map(l => `<button type="button" class="tag ${l===chosenLabel?'on':''}" data-l="${l}" style="background:${l?`var(--l-${l})`:'var(--bg)'};color:${l?`var(--l-${l}-i)`:'var(--muted)'}">${l?LABELS[l]:'Ingen'}</button>`).join('');
+}
+function openCard(cardId, colId){
+  const f = cardId ? findCard(cardId) : null;
+  editing = f ? cardId : null;
+  const k = f ? f.card : {title:'',desc:'',who:'',due:'',label:''};
+  form.title.value = k.title; form.desc.value = k.desc; form.who.value = k.who; form.due.value = k.due;
+  form.col.innerHTML = state.columns.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  form.col.value = f ? f.col.id : colId;
+  chosenLabel = k.label||''; drawLabels();
+  $('del').style.display = f ? '' : 'none';
+  dlg.showModal(); setTimeout(()=>form.title.focus(),0);
+}
+$('lbls').addEventListener('click', e => { const b=e.target.closest('[data-l]'); if(b){ chosenLabel=b.dataset.l; drawLabels(); }});
+$('cancel').onclick = () => dlg.close();
+$('del').onclick = () => { const f=findCard(editing); if(f) f.col.cards.splice(f.i,1); dlg.close(); render(); save(); };
+form.addEventListener('submit', e => {
+  e.preventDefault();
+  const data = {title:form.title.value.trim(), desc:form.desc.value.trim(), who:form.who.value.trim(), due:form.due.value, label:chosenLabel};
+  if(!data.title) return;
+  const target = state.columns.find(c=>c.id===form.col.value) || state.columns[0];
+  if(editing){
+    const f = findCard(editing); Object.assign(f.card, data);
+    if(f.col!==target){ f.col.cards.splice(f.i,1); target.cards.push(f.card); }
+  } else target.cards.push({id:uid(), ...data});
+  dlg.close(); render(); save();
+});
+dlg.addEventListener('close', () => { if(art && $('status').textContent==='Gemmer…') save(); });
+
+board.addEventListener('click', e => {
+  const t = e.target;
+  if(t.dataset.add){ openCard(null, t.dataset.add); return; }
+  if(t.dataset.delcol){
+    const c = state.columns.find(c=>c.id===t.dataset.delcol);
+    if(c.cards.length && !t.dataset.sure){ t.dataset.sure='1'; t.textContent='Slet?'; t.style.color='var(--danger)'; setTimeout(()=>{ if(t.isConnected){ delete t.dataset.sure; t.textContent='×'; t.style.color=''; }},3000); return; }
+    state.columns = state.columns.filter(x=>x!==c); render(); save(); return;
+  }
+  if(t.id==='newcol'){ state.columns.push({id:uid(),name:'Ny kolonne',cards:[]}); render(); save(); const ins=board.querySelectorAll('.col-name'); const last=ins[ins.length-1]; last.focus(); last.select(); return; }
+  const card = t.closest('.card'); if(card) openCard(card.dataset.card);
+});
+board.addEventListener('change', e => {
+  const id = e.target.dataset.rename; if(!id) return;
+  const c = state.columns.find(c=>c.id===id); c.name = e.target.value.trim() || c.name; save();
+});
+board.addEventListener('keydown', e => { if(e.target.dataset.rename && e.key==='Enter') e.target.blur(); });
+$('title').addEventListener('change', e => { state.title = e.target.value.trim() || 'Kanban'; document.title = state.title; save(); });
+$('title').addEventListener('keydown', e => { if(e.key==='Enter') e.target.blur(); });
+$('search').addEventListener('input', e => { filter = e.target.value; render(); });
+
+let dragId = null; const mark = document.createElement('div'); mark.className='drop-mark';
+board.addEventListener('dragstart', e => { const c=e.target.closest('.card'); if(!c) return; dragId=c.dataset.card; c.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',dragId);}catch(_){} });
+board.addEventListener('dragend', () => { dragId=null; mark.remove(); board.querySelectorAll('.over,.dragging').forEach(n=>n.classList.remove('over','dragging')); });
+board.addEventListener('dragover', e => {
+  const zone = e.target.closest('.col')?.querySelector('.cards'); if(!zone||!dragId) return;
+  e.preventDefault();
+  board.querySelectorAll('.cards.over').forEach(n=>n!==zone&&n.classList.remove('over')); zone.classList.add('over');
+  const after = [...zone.querySelectorAll('.card:not(.dragging)')].find(n => { const r=n.getBoundingClientRect(); return e.clientY < r.top + r.height/2; });
+  after ? zone.insertBefore(mark, after) : zone.appendChild(mark);
+});
+board.addEventListener('drop', e => {
+  const zone = e.target.closest('.col')?.querySelector('.cards'); if(!zone||!dragId) return;
+  e.preventDefault();
+  const next = mark.nextElementSibling && mark.nextElementSibling.dataset ? mark.nextElementSibling.dataset.card : null;
+  const f = findCard(dragId); f.col.cards.splice(f.i,1);
+  const target = state.columns.find(c=>c.id===zone.dataset.drop);
+  const idx = next ? target.cards.findIndex(k=>k.id===next) : -1;
+  idx>-1 ? target.cards.splice(idx,0,f.card) : target.cards.push(f.card);
+  render(); save();
+});
+
+render();
+setStatus('');
+(async()=>{ try{ art = await (window.claude && window.claude.use ? window.claude.use('artifact') : null); }catch(e){ art=null; } })();
+})();
+</script>
+</body>
+</html>
