@@ -1,2 +1,4 @@
 flask
 gunicorn
+plotly
+psycopg2-binary
